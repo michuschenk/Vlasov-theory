@@ -99,3 +99,75 @@ def Hlp2(double Q0, double Qs, double rb, double R, double eta,
     gsl_integration_workspace_free(W)
 
     return results
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+def Hlp2_parallel(double Q0, double Qs, double rb, double R, double eta,
+                  double Qp, double Qpp, double l, int p_max=50000):
+    """ OpenMP parallel implementation of (H_l^p)**2 function with parameters
+    as explained above """
+    cdef Py_ssize_t pp
+    cdef np.ndarray[np.float64_t, ndim=1] results = (
+        np.empty(2*p_max+1, dtype=np.float64))
+
+    # Each thread has its own set of 9 parameters
+    cdef int tid
+    cdef int num_threads = 8
+    cdef int num_params = 9
+    cdef np.ndarray[np.float64_t, ndim=2] params = (
+        np.empty((num_threads, num_params), dtype=np.float64))
+
+    for i in range(num_threads):
+        params[i,0] = Q0
+        params[i,1] = Qs
+        params[i,2] = rb
+        params[i,3] = R
+        params[i,4] = eta
+        params[i,5] = Qp
+        params[i,6] = Qpp
+        params[i,7] = 0. # will be overwritten in the loop.
+        params[i,8] = l
+
+    cdef double *ore = <double*>malloc(sizeof(double) * num_threads)
+    cdef double *erre = <double*>malloc(sizeof(double) * num_threads)
+    cdef double *oim = <double*>malloc(sizeof(double) * num_threads)
+    cdef double *erim = <double*>malloc(sizeof(double) * num_threads)
+    cdef gsl_function *Fre = <gsl_function*>malloc(sizeof(gsl_function) * num_threads)
+    cdef gsl_function *Fim = <gsl_function*>malloc(sizeof(gsl_function) * num_threads)
+    cdef gsl_integration_workspace **ws = (
+        <gsl_integration_workspace**>malloc(sizeof(gsl_integration_workspace*) * num_threads))
+
+    # Initialise workspace for all the threads
+    for i in range(num_threads):
+        ws[i] = gsl_integration_workspace_alloc(1000)
+
+    for pp in prange(-p_max, p_max+1, 1, nogil=True, num_threads=num_threads):
+        # Thread id
+        tid = omp_get_thread_num()
+
+        params[tid,7] = pp
+        Fre[tid].function = &hl2_re
+        Fre[tid].params = &params[tid,0]
+        Fim[tid].function = &hl2_im
+        Fim[tid].params = &params[tid,0]
+
+        gsl_integration_qags(&Fre[tid], 0., 2*M_PI, 1e-13, 1e-14, 1000,
+                             ws[tid], &ore[tid], &erre[tid])
+        gsl_integration_qags(&Fim[tid], 0., 2*M_PI, 1e-13, 1e-14, 1000,
+                             ws[tid], &oim[tid], &erim[tid])
+
+        results[pp+p_max] = ore[tid]*ore[tid] + oim[tid]*oim[tid]
+
+    # Now, free all the memory
+    for i in range(num_threads):
+        gsl_integration_workspace_free(ws[i])
+    free(ws)
+    free(Fre)
+    free(Fim)
+    free(ore)
+    free(oim)
+    free(erre)
+    free(erim)
+
+    return results
