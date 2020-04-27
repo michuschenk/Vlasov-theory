@@ -40,7 +40,6 @@ cdef double integrand(double x, void * params) nogil:
 
     return f
 
-
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
@@ -50,7 +49,6 @@ cdef double hl2_re(double x, void * params) nogil:
     f = cos(integrand(x, params)) / (2.*M_PI)
     return f
 
-
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
@@ -59,3 +57,45 @@ cdef double hl2_im(double x, void * params) nogil:
     cdef double f
     f = sin(integrand(x, params)) / (2.*M_PI)
     return f
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+def Hlp2(double Q0, double Qs, double rb, double R, double eta,
+         double Qp, double Qpp, double l, int p_max):
+    """ Serial implementation of (H_l^p)**2 function with parameters as
+    explained above """
+
+    cdef Py_ssize_t pp
+    cdef np.ndarray[np.float64_t, ndim=1] results = (
+        np.empty(2*p_max+1, dtype=np.float64))
+
+    cdef double params[9]
+    params[0] = Q0
+    params[1] = Qs
+    params[2] = rb
+    params[3] = R
+    params[4] = eta
+    params[5] = Qp
+    params[6] = Qpp
+    params[8] = l
+
+    cdef double ore, oim, erre, erim
+    cdef gsl_function Fre
+    cdef gsl_function Fim
+    cdef gsl_integration_workspace * W
+    W = gsl_integration_workspace_alloc(2000)
+
+    for pp in range(-p_max, p_max+1, 1):
+        params[7] = pp
+        Fre.function = &hl2_re
+        Fre.params = params
+        Fim.function = &hl2_im
+        Fim.params = params
+
+        gsl_integration_qags(&Fre, 0, 2*M_PI, 0, 1e-7, 1000, W, &ore, &erre)
+        gsl_integration_qags(&Fim, 0, 2*M_PI, 0, 1e-7, 1000, W, &oim, &erim)
+
+    gsl_integration_workspace_free(W)
+
+    return results
