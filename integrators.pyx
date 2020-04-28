@@ -61,7 +61,7 @@ cdef double hl2_im(double x, void * params) nogil:
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-def Hlp2(double Q0, double Qs, double rb, double R, double eta,
+def hlp2(double Q0, double Qs, double rb, double R, double eta,
          double Qp, double Qpp, double l, int p_max):
     """ Serial implementation of (H_l^p)**2 function with parameters as
     explained above """
@@ -103,7 +103,7 @@ def Hlp2(double Q0, double Qs, double rb, double R, double eta,
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-def Hlp2_parallel(double Q0, double Qs, double rb, double R, double eta,
+def hlp2_parallel(double Q0, double Qs, double rb, double R, double eta,
                   double Qp, double Qpp, double l, int p_max=50000):
     """ OpenMP parallel implementation of (H_l^p)**2 function with parameters
     as explained above """
@@ -159,7 +159,7 @@ def Hlp2_parallel(double Q0, double Qs, double rb, double R, double eta,
 
         results[pp+p_max] = ore[tid]*ore[tid] + oim[tid]*oim[tid]
 
-    # Now, free all the memory
+    # Free all memory
     for i in range(num_threads):
         gsl_integration_workspace_free(ws[i])
     free(ws)
