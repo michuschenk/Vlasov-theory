@@ -56,3 +56,48 @@ def imported_imp(filename):
         return zz
 
     return Z
+
+
+def get_deltaQ(Z=None, Jz=5e-4, Qp=0., Qpp=0., l=0, p_max=100000):
+    # Parameters (use something like SPS)
+    N = 1e9   # Number of protons in bunch
+
+    gamma = 27.7  # 103. #27.7 # Relativistic gamma, at injection 26 GeV. No units.
+    E0 = m_p * c**2 * gamma
+    beta = np.sqrt(1. - 1. / gamma**2)
+    C = 6911.  # [m], accelerator circumference
+    T0 = C / (beta * c)
+    R = C / (2. * np.pi)
+    omega0 = 1. / T0 * 2. * np.pi
+
+    alpha_0 = 0.00308
+    eta = alpha_0 - gamma ** -2  # Slippage factor
+    # eta = 0.001777 # Slippage factor, no units.
+    Q_beta = 20.18
+    omega_beta = Q_beta * omega0  # Betatron tune, here in y.
+    Qs = 0.017
+    omega_s = Qs * omega0  # Synchrotron tune, linear motion, Q20 optics.
+
+    beta_z = eta * C / (2. * np.pi) / (omega_s / omega0)
+    z_hat = np.sqrt(2. * beta_z * Jz)  # [m]
+
+    # Chromaticity
+    xi = Qp / (omega_beta / omega0)
+    chi = xi * omega_beta * z_hat / (c * eta)  # Head-tail phase
+
+    # CALCULATE TUNE SHIFT (Antoine Maillard, Eq. 50)
+    avQ = avg_Q(z_hat, R, eta, Qs, Qpp)
+    p_vect = np.arange(-p_max, p_max + 1)
+    omega_p = p_vect * omega0 + omega_beta + l * omega_s
+    Zeval = Z(omega_p)
+
+    # Serial versions of hlp2 very slow - hence use openMP parallel one
+    hlp2 = hlp2_parallel(Q0=Q_beta, Qs=Qs, rb=z_hat, R=R, eta=eta,
+                         Qp=Qp, Qpp=Qpp, l=l, p_max=p_max)
+
+    sum_term = np.sum(hlp2 * Zeval)
+
+    delta_omega_l = -1j * N * e ** 2 * c / (2. * E0 * T0 ** 2 * omega_beta) * sum_term + avQ * omega0
+    return delta_omega_l / omega0
+
+
