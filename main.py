@@ -101,3 +101,71 @@ def get_deltaQ(Z=None, Jz=5e-4, Qp=0., Qpp=0., l=0, p_max=100000):
     return delta_omega_l / omega0
 
 
+# only scan in Q', to compare Antoine's Hlp function with Bessel from Chao.
+# in case of Q'' = 0, the two should be equivalent. And they are!
+calc = True
+plot = True
+
+if calc:
+    # Define impedance to be used.
+    # Resonator parameters - peaked (i.e. narrow-band)
+    omegar = 5.022163e8
+    Rs = 1e6 * 5e6  # [Ohm/m**2].
+    Q = 1e5
+    Z = reson_transv_equivPyHT(Rs, omegar, Q)
+
+    # Dependence on Q'
+    Qp_vect = np.linspace(-2, 2, 5)
+    l_vect = np.arange(-1, 2, 1)
+    deltaQ_re = np.zeros((len(l_vect), len(Qp_vect)))
+    deltaQ_im = np.zeros((len(l_vect), len(Qp_vect)))
+
+    ctr = 0
+    for i, l in enumerate(l_vect):
+        deltaQ_res = []
+        for Qp in Qp_vect:
+            if ctr % 5 == 0:
+                print('{:d} / {:d}'.format(ctr, len(Qp_vect) * len(l_vect)))
+            deltaQ_res.append(get_deltaQ(Z=Z, Jz=3e-4, Qp=Qp, Qpp=0., l=l,
+                                         p_max=120000))
+            ctr += 1
+        deltaQ_re[i, :] = np.array(np.real(deltaQ_res))
+        deltaQ_im[i, :] = np.array(np.imag(deltaQ_res))
+
+if plot:
+    C = 6911.  # [m], accelerator circumference
+    gamma = 27.7  # 103. #27.7 # Relativistic gamma, at injection 26 GeV. No units.
+    beta = np.sqrt(1. - 1. / gamma ** 2)
+    T0 = C / (beta * c)
+    omega0 = 1. / T0 * 2. * np.pi
+    omega_s = 0.017 * omega0  # Synchrotron tune, linear motion, Q20 optics.
+
+    # Plot result
+    fig = plt.figure(figsize=(12, 10))
+    ax1 = fig.add_subplot(211)
+    ax2 = fig.add_subplot(212, sharex=ax1)
+    cols = cm.rainbow(np.linspace(0, 1, len(l_vect)))
+
+    for i, l in enumerate(l_vect):
+        # ax1.plot(Qp_vect, (deltaQ_re[i,:]/(omega_s/omega0) + l), ls='solid',
+        #         c=cols[i], label='l={:d}'.format(l))
+        # ax1.plot(Qp_vect, deltaQ_re[i,:]/(omega_s/omega0) + l, ls='solid',
+        #         c=cols[i], label='l={:d}'.format(l))
+        ax1.plot(Qp_vect, deltaQ_re[i, :], ls='solid',
+                 c=cols[i], label='l={:d}'.format(l))
+        ax2.plot(Qp_vect, deltaQ_im[i, :], ls='solid', c=cols[i])
+
+    ax1.set_ylabel(r"$Re\left(\Delta Q_c\right)$")
+    ax2.set_xlabel("Q'")
+    ax2.set_ylabel(r"$-Im\left(\Delta Q_c\right)$")
+
+    ax1.set_xlim((np.min(Qp_vect), np.max(Qp_vect)))
+
+    ax1.get_yaxis().get_major_formatter().set_useOffset(False)
+    ax2.get_yaxis().get_major_formatter().set_useOffset(False)
+
+    ax1.legend(loc='best', fontsize=16, ncol=1, bbox_to_anchor=(1.02, 1))
+    plt.subplots_adjust(right=0.85, left=0.12)
+    # plt.savefig('Antoine_analytic_RW_Jz3e-4_QpOnly.png', dpi=150)
+    plt.show()
+
