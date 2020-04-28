@@ -6,7 +6,7 @@ from Cython.Build import cythonize
 ext_modules = [
     Extension("integrators",
               sources=["integrators.pyx"],
-              libraries=["m"],
+              libraries=["m", "gsl", "gslcblas"],
               include_dirs=[np.get_include()],
               extra_compile_args=['-O3', '-Xpreprocessor', '-fopenmp'],
               extra_link_args = ['-Xpreprocessor', '-fopenmp']
