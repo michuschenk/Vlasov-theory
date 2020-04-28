@@ -8,54 +8,64 @@ from scipy.constants import c, e, m_p
 from integrators import hlp2, hlp2_parallel
 
 
+class Resonator:
+    """ Implements a resonator impedance with the PyHeadtail and the
+    Chao convention, respectively """
 
-# NOTE: In PyHT we don't use exactly the wake field definition made by Chao.
-# Hence, also Chao's impedance formula should not be applied here, because of
-# the different conventions. Basically, it's a factor c/omegar difference.
-# Chao is consistent in himself. But, for us, to compare the analytic formula
-# with PyHT simulations (with the same resonator parameters, i.e. especially
-# same Rs and same omegar) we need to use the impedance shown below
-# reson_transv_equivPyHT.
-def Chao_resonator_transverse(Rs, omegar, Q):
-    def Z(omega):
-        return c / omega * Rs / (1. + 1j * Q * (omegar / omega - omega / omegar))
-    return Z
+    def __init__(self, r_shunt, omega_res, Q, convention="PyHeadtail"):
+        """
+        :param r_shunt: shunt impedance [Ohm/m]
+        :param omega_res: resonator frequency [rad/s]
+        :param Q: quality factor
+        :param convention: can be either 'Chao' or 'PyHeadtail' to work
+        with two different conventions of resonators.
+        :returns: Resonator object
+        """
+        self.r_shunt = r_shunt
+        self.omega_res = omega_res
+        self.Q = Q
+        self.convention = convention
+
+    def evaluate(self, omega):
+        z = (c / omega * self.r_shunt /
+             (1. + 1j * self.Q * (self.omega_res / omega - omega / self.omega_res)))
+        if self.convention == "PyHeadtail":
+            z *= self.omega_res / c
+        return z
 
 
-def reson_transv_equivPyHT(Rs, omegar, Q):
-    def Z(omega):
-        return omegar / omega * Rs / (1. + 1j * Q * (omegar / omega - omega / omegar))
+class ImpedanceFile:
+    """ Reads impedance data from file (columns are frequency [Hz], real part
+    [Ohm/m], imaginary part [Ohm/m]) and creates interpolation functions based
+    on the data. This is suited for impedance models that cannot be described
+    by simple resonator, for example. """
 
-    return Z
+    def __init__(self, filename):
+        """
+        :param: omega: sorted (assumed) array of frequencies [rad/s],
+        :param: real: real component [Ohm/m],
+        :param: imag: imaginary component [Ohm/m] """
+        raw_data = np.loadtxt(filename)
+        omega = raw_data[:, 0] * 2 * np.pi  # convert from [Hz] to [rad/s]
+        self.real = interp1d(omega, raw_data[:, 1])
+        self.imag = interp1d(omega, raw_data[:, 2])
+        self.omega_min = omega[0]
+
+    def evaluate(self, omega):
+        """ Evaluates impedance for frequency vector :param omega. """
+        z = np.zeros(len(omega), dtype=np.complex)
+        msk_pos = (omega > 0) & (omega > self.omega_min)
+        msk_neg = (omega < 0) & (omega < -self.omega_min)
+        msk_0 = np.abs(omega) <= self.omega_min
+        z[msk_pos] = self.real(omega[msk_pos]) + 1j * self.imag(omega[msk_pos])
+        z[msk_neg] = -self.real(-omega[msk_neg]) + 1j * self.imag(-omega[msk_neg])
+        z[msk_0] = 0.
+        return z
 
 
 def avg_Q(r, R, eta, Qs, Qpp):
     return Qpp * Qs ** 2 * r ** 2 / (4. * eta ** 2 * R ** 2)
 
-
-def imported_imp(filename):
-    fdata = np.loadtxt(filename)
-    freq = fdata[:, 0]
-    omg = freq * 2. * np.pi
-    reZ = fdata[:, 1]
-    imZ = fdata[:, 2]
-
-    omg_min = omg[0]
-
-    reZ_ip = interp1d(omg, reZ)
-    imZ_ip = interp1d(omg, imZ)
-
-    def Z(omega):
-        zz = np.zeros(len(omega), dtype=np.complex)
-        msk_pos = (omega > 0) & (omega > omg_min)
-        msk_neg = (omega < 0) & (omega < -omg_min)
-        msk_0 = np.abs(omega) <= omg_min
-        zz[msk_pos] = reZ_ip(omega[msk_pos]) + 1j * imZ_ip(omega[msk_pos])
-        zz[msk_neg] = -reZ_ip(-omega[msk_neg]) + 1j * imZ_ip(-omega[msk_neg])
-        zz[msk_0] = 0.
-        return zz
-
-    return Z
 
 
 def get_deltaQ(Z=None, Jz=5e-4, Qp=0., Qpp=0., l=0, p_max=100000):
@@ -89,7 +99,7 @@ def get_deltaQ(Z=None, Jz=5e-4, Qp=0., Qpp=0., l=0, p_max=100000):
     avQ = avg_Q(z_hat, R, eta, Qs, Qpp)
     p_vect = np.arange(-p_max, p_max + 1)
     omega_p = p_vect * omega0 + omega_beta + l * omega_s
-    Zeval = Z(omega_p)
+    Zeval = Z.evaluate(omega_p)
 
     # Serial versions of hlp2 very slow - hence use openMP parallel one
     hlp2 = hlp2_parallel(Q0=Q_beta, Qs=Qs, rb=z_hat, R=R, eta=eta,
@@ -100,6 +110,14 @@ def get_deltaQ(Z=None, Jz=5e-4, Qp=0., Qpp=0., l=0, p_max=100000):
     delta_omega_l = -1j * N * e ** 2 * c / (2. * E0 * T0 ** 2 * omega_beta) * sum_term + avQ * omega0
     return delta_omega_l / omega0
 
+
+# In PyHeadtail we do not use exactly the wake field definition
+# made by Chao.Hence, also Chao 's impedance formula should not be applied
+# here( in general), because of the different conventions. Basically,
+# it is a factor c / omega_res.Chao is consistent in itself.But, for us, to
+# compare the analytical formula with PyHeadtail simulations with the same
+# resonator parameters, i.e.especially same r_shunt and omega_res) we must
+# typically use 'PyHeadtail' convention.
 
 # only scan in Q', to compare Antoine's Hlp function with Bessel from Chao.
 # in case of Q'' = 0, the two should be equivalent. And they are!
@@ -112,7 +130,7 @@ if calc:
     omegar = 5.022163e8
     Rs = 1e6 * 5e6  # [Ohm/m**2].
     Q = 1e5
-    Z = reson_transv_equivPyHT(Rs, omegar, Q)
+    Z = Resonator(Rs, omegar, Q, convention="PyHeadtail")
 
     # Dependence on Q'
     Qp_vect = np.linspace(-2, 2, 5)
