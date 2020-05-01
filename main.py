@@ -77,8 +77,8 @@ def update_machine_parameters(machine):
     T0 = machine['circumference'] / (beta * c)
     eta = machine['alpha_0'] - machine['gamma'] ** -2
     omega_0 = 2. * np.pi / T0
-    beta_z = eta * T0 / machine['Qs']
     radius = machine['circumference'] / (2. * np.pi)
+    beta_z = eta * radius / machine['Qs']
     total_energy = machine['gamma'] * machine['particle_mass'] * c ** 2
     z_hat = np.sqrt(2. * beta_z * machine['Jz'])
 
@@ -108,7 +108,6 @@ def get_complex_tuneshift(machine, impedance, Qp=0., Qpp=0., l=0, p_max=120000):
     p_vect = np.arange(-p_max, p_max + 1)
     omega_p = (p_vect + machine['Q_beta'] + l * machine['Qs']) * machine['omega_0']
     imp_eval = impedance.evaluate(omega_p)
-    print('imp_eval', imp_eval)
 
     # Serial versions of hlp2 very slow - hence use openMP parallel one
     hlp2 = hlp2_parallel(
@@ -117,7 +116,6 @@ def get_complex_tuneshift(machine, impedance, Qp=0., Qpp=0., l=0, p_max=120000):
         Qp=Qp, Qpp=Qpp, l=l, p_max=p_max)
 
     sum_term = np.sum(hlp2 * imp_eval)
-    print('sum_term', sum_term)
 
     pre_factor = (
         -1j * machine['number_particles'] * e ** 2 * c /
@@ -159,6 +157,7 @@ Qp = 2
 azimuthal_mode = 1
 delta_Q = get_complex_tuneshift(SPS, resonator, Qp=Qp, Qpp=0., l=azimuthal_mode)
 print('delta_Q', delta_Q)
+
 
 """
 
