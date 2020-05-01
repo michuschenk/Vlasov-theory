@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
-from scipy.integrate import quad, fixed_quad
 from scipy.interpolate import interp1d
 from scipy.constants import c, e, m_p
 
