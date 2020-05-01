@@ -106,9 +106,9 @@ def get_complex_tuneshift(machine, impedance, Qp=0., Qpp=0., l=0, p_max=120000):
 
     avg_Q = get_average_tuneshift(machine, Qpp)
     p_vect = np.arange(-p_max, p_max + 1)
-    omega_p = ((p_vect + machine['Q_beta'] + l * machine['Qs']) *
-               machine['omega_0'])
+    omega_p = (p_vect + machine['Q_beta'] + l * machine['Qs']) * machine['omega_0']
     imp_eval = impedance.evaluate(omega_p)
+    print('imp_eval', imp_eval)
 
     # Serial versions of hlp2 very slow - hence use openMP parallel one
     hlp2 = hlp2_parallel(
@@ -117,6 +117,7 @@ def get_complex_tuneshift(machine, impedance, Qp=0., Qpp=0., l=0, p_max=120000):
         Qp=Qp, Qpp=Qpp, l=l, p_max=p_max)
 
     sum_term = np.sum(hlp2 * imp_eval)
+    print('sum_term', sum_term)
 
     pre_factor = (
         -1j * machine['number_particles'] * e ** 2 * c /
