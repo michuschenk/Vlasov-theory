@@ -66,16 +66,16 @@ def update_machine_parameters(machine):
     of the beam.
     :returns: """
     beta = np.sqrt(1. - 1. / machine['gamma'] ** 2)  # relativistic beta
-    t0 = machine['circumference'] / (beta * c)  # revolution period [s]
+    rev_period = machine['circumference'] / (beta * c)  # revolution period [s]
     eta = machine['alpha_0'] - machine['gamma'] ** -2  # slippage factor
-    omega_0 = 2. * np.pi / t0  # revolution frequency [rad/s]
+    omega_0 = 2. * np.pi / rev_period  # revolution frequency [rad/s]
     radius = machine['circumference'] / (2. * np.pi)  # machine physical radius [m]
     beta_z = eta * radius / machine['Qs']  # longitudinal beta function [m]
     total_energy = machine['gamma'] * machine['particle_mass'] * c ** 2  # total beam energy [J]
     z_hat = np.sqrt(2. * beta_z * machine['Jz'])  # airbag beam radius [m]
 
     machine.update(
-        {'beta': beta, 't0': t0, 'eta': eta, 'omega_0': omega_0,
+        {'beta': beta, 'rev_period': rev_period, 'eta': eta, 'omega_0': omega_0,
          'beta_z': beta_z, 'radius': radius, 'total_energy': total_energy,
          'z_hat': z_hat}
     )
@@ -112,7 +112,7 @@ def get_complex_tuneshift(machine, impedance, Qp=0., Qpp=0., l=0, p_max=120000):
 
     pre_factor = (
         -1j * machine['number_particles'] * e ** 2 * c /
-        (2. * machine['total_energy'] * machine['T0'] ** 2 * machine['Q_beta']))
+        (2. * machine['total_energy'] * machine['rev_period'] ** 2 * machine['Q_beta']))
     delta_Q = pre_factor * sum_term / machine['omega_0'] ** 2 + avg_Q
 
     return delta_Q
