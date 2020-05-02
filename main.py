@@ -87,6 +87,7 @@ def update_machine_parameters(machine):
          'z_hat': z_hat}
     )
 
+
 def get_average_tuneshift(machine, Qpp):
     """ Computes average tune shift for given airbag bunch and machine
     parameters (see A. Maillard, Eq. 50).
@@ -139,13 +140,7 @@ update_machine_parameters(SPS)
 
 # Define impedance to be used.
 # Resonator parameters - peaked (i.e. narrow-band)
-# In PyHeadtail we do not use exactly the wake field definition
-# made by Chao.Hence, also Chao 's impedance formula should not be applied
-# here( in general), because of the different conventions. Basically,
-# it is a factor c / omega_res.Chao is consistent in itself.But, for us, to
-# compare the analytical formula with PyHeadtail simulations with the same
-# resonator parameters, i.e.especially same r_shunt and omega_res) we must
-# typically use 'PyHeadtail' convention.
+# Since we compare to PyHEADTAIL results, we must 'PyHeadtail' convention.
 omega_res = 5.022163e8
 r_shunt = 1e6 * 5e6  # [Ohm/m**2].
 Q = 1e5
