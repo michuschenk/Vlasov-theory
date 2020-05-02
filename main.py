@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 from scipy.interpolate import interp1d
 from scipy.constants import c, e, m_p
+from progressbar import ProgressBar
 
 from integrators import hlp2_parallel
 
@@ -146,75 +147,37 @@ r_shunt = 1e6 * 5e6  # [Ohm/m**2].
 Q = 1e5
 resonator = Resonator(r_shunt, omega_res, Q, convention="PyHeadtail")
 
-# Compute tune shift for specific azimuthal mode
-Qp = 2
-azimuthal_mode = 1
-delta_Q = get_complex_tuneshift(SPS, resonator, Qp=Qp, Qpp=0., l=azimuthal_mode)
-print('delta_Q', delta_Q)
+# First test: compute tune shifts vs. Q'
+# Scan variables
+Qp = np.linspace(-2, 6, 5)
+azimuthal_modes = np.arange(-1, 3, 1)
+delta_Q = np.zeros((len(azimuthal_modes), len(Qp)), dtype=np.complex)
 
+pbar = ProgressBar()
+for i, l in pbar(enumerate(azimuthal_modes)):
+    for j, qp in enumerate(Qp):
+        delta_Q[i, j] = get_complex_tuneshift(
+            machine=SPS, impedance=resonator, Qp=qp, l=l)
 
-"""
+# Plot result
+fig = plt.figure(figsize=(10, 10))
+ax1 = fig.add_subplot(211)
+ax2 = fig.add_subplot(212, sharex=ax1)
+cols = cm.plasma(np.linspace(0, 1, len(azimuthal_modes)))
 
-# only scan in Q', to compare Antoine's Hlp function with Bessel from Chao.
-# in case of Q'' = 0, the two should be equivalent. And they are!
-calc = True
-plot = True
+for i, l in enumerate(azimuthal_modes):
+    ax1.plot(Qp, delta_Q[i, :].real, '.-', c=cols[i], label='l={:d}'.format(l))
+    ax2.plot(Qp, delta_Q[i, :].imag, '.-', c=cols[i])
 
-if calc:
+ax1.set_ylabel(r"$Re\left(\Delta Q_c\right)$")
+ax2.set_xlabel(r"$Q'$")
+ax2.set_ylabel(r"$-Im\left(\Delta Q_c\right)$")
 
+ax1.set_xlim((np.min(Qp), np.max(Qp)))
 
-    # Dependence on Q'
-    Qp_vect = np.linspace(-2, 2, 5)
-    l_vect = np.arange(-1, 2, 1)
-    deltaQ_re = np.zeros((len(l_vect), len(Qp_vect)))
-    deltaQ_im = np.zeros((len(l_vect), len(Qp_vect)))
+ax1.get_yaxis().get_major_formatter().set_useOffset(False)
+ax2.get_yaxis().get_major_formatter().set_useOffset(False)
 
-    ctr = 0
-    for i, l in enumerate(l_vect):
-        deltaQ_res = []
-        for Qp in Qp_vect:
-            if ctr % 5 == 0:
-                print('{:d} / {:d}'.format(ctr, len(Qp_vect) * len(l_vect)))
-            deltaQ_res.append(get_complex_tuneshift(Z=Z, Jz=3e-4, Qp=Qp, Qpp=0., l=l,
-                                                    p_max=120000))
-            ctr += 1
-        deltaQ_re[i, :] = np.array(np.real(deltaQ_res))
-        deltaQ_im[i, :] = np.array(np.imag(deltaQ_res))
-
-if plot:
-    C = 6911.  # [m], accelerator circumference
-    gamma = 27.7  # 103. #27.7 # Relativistic gamma, at injection 26 GeV. No units.
-    beta = np.sqrt(1. - 1. / gamma ** 2)
-    T0 = C / (beta * c)
-    omega0 = 1. / T0 * 2. * np.pi
-    omega_s = 0.017 * omega0  # Synchrotron tune, linear motion, Q20 optics.
-
-    # Plot result
-    fig = plt.figure(figsize=(12, 10))
-    ax1 = fig.add_subplot(211)
-    ax2 = fig.add_subplot(212, sharex=ax1)
-    cols = cm.rainbow(np.linspace(0, 1, len(l_vect)))
-
-    for i, l in enumerate(l_vect):
-        # ax1.plot(Qp_vect, (deltaQ_re[i,:]/(omega_s/omega0) + l), ls='solid',
-        #         c=cols[i], label='l={:d}'.format(l))
-        # ax1.plot(Qp_vect, deltaQ_re[i,:]/(omega_s/omega0) + l, ls='solid',
-        #         c=cols[i], label='l={:d}'.format(l))
-        ax1.plot(Qp_vect, deltaQ_re[i, :], ls='solid',
-                 c=cols[i], label='l={:d}'.format(l))
-        ax2.plot(Qp_vect, deltaQ_im[i, :], ls='solid', c=cols[i])
-
-    ax1.set_ylabel(r"$Re\left(\Delta Q_c\right)$")
-    ax2.set_xlabel("Q'")
-    ax2.set_ylabel(r"$-Im\left(\Delta Q_c\right)$")
-
-    ax1.set_xlim((np.min(Qp_vect), np.max(Qp_vect)))
-
-    ax1.get_yaxis().get_major_formatter().set_useOffset(False)
-    ax2.get_yaxis().get_major_formatter().set_useOffset(False)
-
-    ax1.legend(loc='best', fontsize=16, ncol=1, bbox_to_anchor=(1.02, 1))
-    plt.subplots_adjust(right=0.85, left=0.12)
-    # plt.savefig('Antoine_analytic_RW_Jz3e-4_QpOnly.png', dpi=150)
-    plt.show()
-"""
+ax1.legend(loc='best', fontsize=16, ncol=1, bbox_to_anchor=(1.02, 1))
+plt.subplots_adjust(right=0.85, left=0.12)
+plt.show()
