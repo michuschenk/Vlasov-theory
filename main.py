@@ -7,6 +7,8 @@ from progressbar import ProgressBar
 
 from integrators import hlp2_parallel
 
+plt.style.use('default')
+
 
 class Resonator:
     """ Implements a resonator impedance with the PyHeadtail and the
@@ -160,24 +162,26 @@ for i, l in pbar(enumerate(azimuthal_modes)):
             machine=SPS, impedance=resonator, Qp=qp, l=l)
 
 # Plot result
-fig = plt.figure(figsize=(10, 10))
+fig = plt.figure(figsize=(6.5, 7))
 ax1 = fig.add_subplot(211)
 ax2 = fig.add_subplot(212, sharex=ax1)
+axis_multiplier = 3
 cols = cm.plasma(np.linspace(0, 1, len(azimuthal_modes)))
 
 for i, l in enumerate(azimuthal_modes):
-    ax1.plot(Qp, delta_Q[i, :].real, '.-', c=cols[i], label='l={:d}'.format(l))
-    ax2.plot(Qp, delta_Q[i, :].imag, '.-', c=cols[i])
+    ax1.plot(Qp, delta_Q[i, :].real * 10**axis_multiplier,
+             'x-', c=cols[i], label='l={:d}'.format(l))
+    ax2.plot(Qp, delta_Q[i, :].imag * 10**axis_multiplier,
+             'x-', c=cols[i])
 
-ax1.set_ylabel(r"$Re\left(\Delta Q_c\right)$")
+ax1.set_ylabel(r"$10^{:d}$ Re $\Delta Q_c$".format(axis_multiplier))
 ax2.set_xlabel(r"$Q'$")
-ax2.set_ylabel(r"$-Im\left(\Delta Q_c\right)$")
+ax2.set_ylabel(r"$-10^{:d}$ Im $\Delta Q_c$".format(axis_multiplier))
 
 ax1.set_xlim((np.min(Qp), np.max(Qp)))
 
 ax1.get_yaxis().get_major_formatter().set_useOffset(False)
 ax2.get_yaxis().get_major_formatter().set_useOffset(False)
 
-ax1.legend(loc='best', fontsize=16, ncol=1, bbox_to_anchor=(1.02, 1))
-plt.subplots_adjust(right=0.85, left=0.12)
+ax1.legend(loc='best', fontsize=12)
 plt.show()
