@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.constants import c, e
 from scipy.interpolate import interp1d
 
@@ -116,3 +117,38 @@ def get_complex_tuneshift(machine, impedance, Qp=0., Qpp=0., l=0, p_max=120000):
     delta_Q = pre_factor * sum_term / machine['omega_0'] ** 2 + avg_Q
 
     return delta_Q
+
+
+def display_result(delta_q, scan_var_1, scan_var_2, label_var_1, label_var_2,
+                   axis_multiplier=3):
+    """
+    :param delta_q: complex tune shifts (axis 0: first_scan_var, axis 1: second_scan_var)
+    :param scan_var_1: first scan variable (will be along x-axis)
+    :param scan_var_2: second scan variable (color-coded)
+    :param label_var_1: name of first variable
+    :param label_var_2: name of second variable
+    :param axis_multiplier: multiply y axis values by 10^(axis_multiplier) for better display
+    :return:
+    """
+    fig = plt.figure(figsize=(6.5, 7))
+    ax1 = fig.add_subplot(211)
+    ax2 = fig.add_subplot(212, sharex=ax1)
+    cols = plt.get_cmap('plasma')
+
+    for i, var_2 in enumerate(scan_var_2):
+        ax1.plot(scan_var_1, delta_q[i, :].real * 10 ** axis_multiplier, 'x--',
+                 ms=8, c=cols(float(i) / len(scan_var_2)),
+                 label=f'{label_var_2}={var_2}')
+        ax2.plot(scan_var_1, delta_q[i, :].imag * 10 ** axis_multiplier, 'x--',
+                 ms=8, c=cols(float(i) / len(scan_var_2)))
+
+    # Axis labels
+    ax1.set_ylabel(r'$10^{:d}$ Re $\Delta Q_c$'.format(axis_multiplier))
+    ax2.set_xlabel(f'{label_var_1}')
+    ax2.set_ylabel(r'$-10^{:d}$ Im $\Delta Q_c$'.format(axis_multiplier))
+    ax1.set_xlim((np.min(scan_var_1), np.max(scan_var_1)))
+
+    ax1.get_yaxis().get_major_formatter().set_useOffset(False)
+    ax2.get_yaxis().get_major_formatter().set_useOffset(False)
+    ax1.legend(loc='best', fontsize=12)
+    plt.show()
