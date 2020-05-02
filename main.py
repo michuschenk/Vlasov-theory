@@ -1,9 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import cm
 from scipy.constants import m_p
 from progressbar import ProgressBar
-
 import utils as ut
 
 plt.style.use('default')
@@ -28,8 +26,8 @@ r_shunt = 1e6 * 5e6  # [Ohm/m**2]
 Q = 1e5
 resonator = ut.Resonator(r_shunt, omega_res, Q, convention="PyHeadtail")
 
-# First test: compute tune shifts vs. Q'
-# Scan variables
+# 3) First test: compute tune shifts vs. Q'
+# Scan variables are Qp and azimuthal_modes
 Qp = np.linspace(-2, 6, 5)
 azimuthal_modes = np.arange(-1, 3, 1)
 delta_Q = np.zeros((len(azimuthal_modes), len(Qp)), dtype=np.complex)
@@ -45,13 +43,13 @@ fig = plt.figure(figsize=(6.5, 7))
 ax1 = fig.add_subplot(211)
 ax2 = fig.add_subplot(212, sharex=ax1)
 axis_multiplier = 3
-cols = cm.plasma(np.linspace(0, 1, len(azimuthal_modes)))
+cols = plt.get_cmap('plasma')
 
 for i, l in enumerate(azimuthal_modes):
-    ax1.plot(Qp, delta_Q[i, :].real * 10**axis_multiplier,
-             'x-', c=cols[i], label='l={:d}'.format(l))
-    ax2.plot(Qp, delta_Q[i, :].imag * 10**axis_multiplier,
-             'x-', c=cols[i])
+    ax1.plot(Qp, delta_Q[i, :].real * 10**axis_multiplier, 'x-',
+             c=cols(float(i)/len(azimuthal_modes)), label='l={:d}'.format(l))
+    ax2.plot(Qp, delta_Q[i, :].imag * 10**axis_multiplier, 'x-',
+             c=cols(float(i) / len(azimuthal_modes)))
 
 ax1.set_ylabel(r"$10^{:d}$ Re $\Delta Q_c$".format(axis_multiplier))
 ax2.set_xlabel(r"$Q'$")

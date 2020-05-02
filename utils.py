@@ -104,8 +104,8 @@ def get_complex_tuneshift(machine, impedance, Qp=0., Qpp=0., l=0, p_max=120000):
 
     # Serial versions of hlp2 very slow - hence use openMP parallel one
     hlp2 = hlp2_parallel(
-        Q0=machine['Q_beta'], Qs=machine['Qs'], rb=machine['z_hat'],
-        R=machine['radius'], eta=machine['eta'],
+        Q0=machine['Q_beta'], Qs=machine['Qs'], z_hat=machine['z_hat'],
+        radius=machine['radius'], eta=machine['eta'],
         Qp=Qp, Qpp=Qpp, l=l, p_max=p_max)
 
     sum_term = np.sum(hlp2 * imp_eval)
